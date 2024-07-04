@@ -1,0 +1,300 @@
+module pa_soa1_gpu
+
+#include "assertion.h"
+
+  use assertion
+  use constants
+  use maths
+  use pa_soa1
+  use storage_soa1
+  use source
+  use util_omp_lib
+
+  implicit none
+  private
+
+  ! Particle SOA1 storage management intended for device use
+
+  integer, parameter :: NAME_PA_BLOCKSZ = 128
+
+  type, public, extends(pa_soa1_t) :: pa_soa1_gpu_t
+    private
+    integer (int32)               :: nmaxLocal        ! particles allocated
+    integer (int32)               :: nBlocks          ! size NAME_PA_BLOCKSZ
+    integer (int32)               :: lastBlock        ! last active block
+  contains
+    procedure :: printState        => pa_soa1_gpu_printState
+    procedure :: releaseFromSource => pa_soa1_gpu_releaseFromSource
+    procedure :: removeInactive    => pa_soa1_gpu_removeInactive
+    procedure :: lastParticle      => pa_soa1_gpu_lastParticle
+    procedure :: nameScheduleSize  => pa_soa1_gpu_nameScheduleSize
+    procedure :: destroy           => pa_soa1_gpu_release
+  end type pa_soa1_gpu_t
+
+  public :: pa_soa1_gpu_create_pointer
+  public :: pa_soa1_gpu_create
+  public :: pa_soa1_gpu_release
+
+  public :: pa_soa1_gpu_releaseFromSource
+  public :: pa_soa1_gpu_printState
+  public :: pa_soa1_gpu_lastParticle
+  public :: pa_soa1_gpu_nameScheduleSize
+
+contains
+
+  !---------------------------------------------------------------------------
+
+  function pa_soa1_gpu_create_pointer(maxLocal) result(pa)
+
+    ! Return a pointer to a new object; assume this is the top-level
+    ! object and the device mapping should always take place.
+
+    integer,               intent(in) :: maxLocal
+    class (pa_soa1_gpu_t), pointer    :: pa
+
+    allocate(pa)
+    call pa_soa1_gpu_create(pa, maxLocal, map = .true.)
+
+  end function pa_soa1_gpu_create_pointer
+
+  !---------------------------------------------------------------------------
+
+  subroutine pa_soa1_gpu_create(soa1, maxLocal, map)
+
+    type (pa_soa1_gpu_t), intent(out) :: soa1
+    integer (int32),      intent(in)  :: maxLocal
+    logical, optional,    intent(in)  :: map
+
+    logical :: maptarget
+
+    maptarget = .false.
+    if (present(map)) maptarget = map
+
+    ! Storage: allocate a whole number of blocks
+    ! Furthermore, allocate a power-of-two number of blocks
+
+    soa1%nBlocks   = mathsNearestPowerOfTwo(1 + maxLocal/NAME_PA_BLOCKSZ)
+    soa1%nmaxLocal = soa1%nBlocks*NAME_PA_BLOCKSZ
+    call storage_soa1_create(soa1%particles, soa1%nmaxLocal, map = .false.)
+
+    ! Management
+    soa1%lastBlock = 0
+
+    if (maptarget) then
+      !$omp target enter data map(always, to: soa1)
+
+      !$omp target enter data map(alloc: soa1%particles)
+
+      !$omp target enter data map(alloc: soa1%particles%iUP)
+      !$omp target enter data map(alloc: soa1%particles%iE)
+
+      !$omp target enter data map(alloc: soa1%particles%x)
+      !$omp target enter data map(alloc: soa1%particles%xOld)
+      !$omp target enter data map(alloc: soa1%particles%t)
+      !$omp target enter data map(alloc: soa1%particles%tOld)
+      !$omp target enter data map(alloc: soa1%particles%t0)
+      !$omp target enter data map(alloc: soa1%particles%needToSetVel)
+      !$omp target enter data map(alloc: soa1%particles%active)
+      !$omp target enter data map(alloc: soa1%particles%marked)
+
+      !$omp target enter data map(alloc: soa1%particles%iHCoord)
+      !$omp target enter data map(alloc: soa1%particles%iZCoord)
+      !$omp target enter data map(alloc: soa1%particles%iHCoordOld)
+      !$omp target enter data map(alloc: soa1%particles%iZCoordOld)
+      !$omp target enter data map(alloc: soa1%particles%iSource)
+
+      !$omp target enter data map(alloc: soa1%particles%h)
+      !$omp target enter data map(alloc: soa1%particles%wSed)
+      !$omp target enter data map(alloc: soa1%particles%diameter)
+      !$omp target enter data map(alloc: soa1%particles%density)
+      !$omp target enter data map(alloc: soa1%particles%particleShape)
+      !$omp target enter data map(alloc: soa1%particles%elongation)
+      !$omp target enter data map(alloc: soa1%particles%flatness)
+      !$omp target enter data map(alloc: soa1%particles%shapeSchemeCode)
+
+      !$omp target enter data map(alloc: soa1%particles%s)
+    end if
+
+    ! Make sure all particles are inactive
+    block
+      integer :: iP
+
+      !$omp target teams
+      !$omp distribute parallel do
+      do iP = 1, soa1%nmaxLocal
+        soa1%particles%active(iP) = .false.
+      end do
+      !$omp end distribute parallel do
+      !$omp end target teams
+    end block
+
+  end subroutine pa_soa1_gpu_create
+
+  !---------------------------------------------------------------------------
+
+  subroutine pa_soa1_gpu_release(self)
+
+    class (pa_soa1_gpu_t), intent(inout) :: self
+    !logical, optional,    intent(in)    :: unmap
+
+    logical :: unmaptarget
+
+    !unmaptarget = .false.
+    !if (present(unmap)) unmaptarget = unmap
+    unmaptarget = .true.
+
+    if (unmaptarget) then
+
+      !$omp target exit data map(delete: self%particles%s)
+
+      !$omp target exit data map(delete: self%particles%shapeSchemeCode)
+      !$omp target exit data map(delete: self%particles%flatness)
+      !$omp target exit data map(delete: self%particles%elongation)
+      !$omp target exit data map(delete: self%particles%particleShape)
+      !$omp target exit data map(delete: self%particles%density)
+      !$omp target exit data map(delete: self%particles%diameter)
+      !$omp target exit data map(delete: self%particles%wSed)
+
+      !$omp target exit data map(delete: self%particles%h)
+       
+      !$omp target exit data map(delete: self%particles%iSource)
+      !$omp target exit data map(delete: self%particles%iZCoordOld)
+      !$omp target exit data map(delete: self%particles%iHCoordOld)
+      !$omp target exit data map(delete: self%particles%iZCoord)
+      !$omp target exit data map(delete: self%particles%iHCoord)
+
+      !$omp target exit data map(delete: self%particles%marked)
+      !$omp target exit data map(delete: self%particles%active)
+      !$omp target exit data map(delete: self%particles%needToSetVel)
+      !$omp target exit data map(delete: self%particles%t0)
+      !$omp target exit data map(delete: self%particles%tOld)
+      !$omp target exit data map(delete: self%particles%t)
+      !$omp target exit data map(delete: self%particles%xOld)
+      !$omp target exit data map(delete: self%particles%x)
+
+      !$omp target exit data map(delete: self%particles%iE)
+      !$omp target exit data map(delete: self%particles%iUP)
+
+      !$omp target exit data map(delete: self%particles)
+      !$omp target exit data map(delete: self)
+    end if
+
+    call storage_soa1_release(self%particles, unmap = .false.)
+
+    self%lastBlock = 0
+    self%nBlocks   = 0
+    self%nmaxLocal = 0
+
+  end subroutine pa_soa1_gpu_release
+
+  !---------------------------------------------------------------------------
+
+  subroutine pa_soa1_gpu_releaseFromSource(self, nRelease, source)
+
+    ! Release nRelease particles from source
+
+    class (pa_soa1_gpu_t), intent(inout) :: self
+    integer,               intent(in)    :: nRelease
+    type (source_t),       intent(in)    :: source
+
+    integer (int32) :: iR
+    integer (int64) :: iUP
+    integer (int32) :: iP
+
+    ! Check we have enough capacity to store nRelease new particles
+
+    if (self%lastParticle() + nRelease > self%nmaxLocal) then
+      print *, "Attempt to release too many particles"
+      print *, "nRelease:                            ", nRelease
+      print *, "lastParticle()                       ", self%lastParticle()
+      print *, "nmaxLocal                            ", self%nmaxLocal
+      stop     "Fatal"
+    end if
+
+    ! Contiguous release from first free position
+
+    !$omp target teams
+    !$omp distribute parallel do private(iR, iUP, iP)
+    do iR = 1, nRelease
+
+      iUP = source%iUP0 + iR                 ! Revisit as iUP0 needs updating
+      iP = self%lastBlock*NAME_PA_BLOCKSZ + iR
+      call storage_soa1_initialiseFromSource(self%particles, iP, iUP, source)
+
+    end do
+    !$omp end distribute parallel do
+    !$omp end target teams
+
+    block
+      integer :: nblock
+      ! Always move forward a whole number of blocks
+      nblock = (NAME_PA_BLOCKSZ + nRelease - 1)/NAME_PA_BLOCKSZ
+      self%lastBlock = self%lastBlock + nblock
+      !$omp target update to(self%lastBlock)
+    end block
+
+  end subroutine pa_soa1_gpu_releaseFromSource
+
+  !---------------------------------------------------------------------------
+
+  subroutine pa_soa1_gpu_removeInactive(self)
+
+    class (pa_soa1_gpu_t), intent(inout) :: self
+
+    ! Kernel ...
+
+  end subroutine pa_soa1_gpu_removeInactive
+
+  !---------------------------------------------------------------------------
+
+  subroutine pa_soa1_gpu_printState(self)
+
+    ! Produce a report on the current state of the management
+
+    class (pa_soa1_gpu_t), intent(in) :: self
+
+    integer :: nactive
+
+    nactive = self%nActive()
+
+    print *, ""
+    print *, "Manager: pa_soa1_gpu            "
+
+    print *, "Manager: NAME_PA_BLOCSZ         ", NAME_PA_BLOCKSZ
+    print *, "Manager: maxLocal               ", self%nmaxLocal
+    print *, "Manager: nBlocks                ", self%nBlocks
+    print *, "Manager: omp_get_num_devices()  ", omp_get_num_devices()
+
+    print *, "Manager: nactive                ", nactive
+    print *, "Manager: lastBlock              ", self%lastBlock
+    print *, "Manager: lastActiveParticle     ", self%lastParticle()
+
+  end subroutine pa_soa1_gpu_printState
+
+  !---------------------------------------------------------------------------
+
+  pure function pa_soa1_gpu_lastParticle(self) result(last)
+
+    ! Whole number of blocks
+
+    class (pa_soa1_gpu_t), intent(in) :: self
+    integer                        :: last
+
+    last = self%lastBlock*NAME_PA_BLOCKSZ
+
+  end function pa_soa1_gpu_lastParticle
+
+  !---------------------------------------------------------------------------
+
+  function pa_soa1_gpu_nameScheduleSize(self) result(nScheduleSize)
+
+    ! The static schedule size is 1 for GPU
+
+    class (pa_soa1_gpu_t), intent(in) :: self
+    integer                        :: nScheduleSize
+
+    nScheduleSize = 1
+
+  end function pa_soa1_gpu_nameScheduleSize
+
+end module pa_soa1_gpu
