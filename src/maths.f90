@@ -149,11 +149,13 @@ contains
     integer (int32), intent(inout) :: s(4)
     real (real64),   intent(out)   :: rv(2)
 
+    ! Box-Mueller
+
+#ifdef BM_REJECTION_METHOD
+
     real (real64) :: r1, r2
     real (real64) :: rsq
     real (real64) :: factor
-
-    ! Box-Mueller
 
     do
       call mathsRandomUniform64(s, r1)
@@ -168,6 +170,22 @@ contains
     factor = sqrt(-2.0 * log(rsq) / rsq)
     rv(1) = r1 * factor
     rv(2) = r2 * factor
+#else
+    ! Trigonometric functions
+
+    real (real64), parameter :: pi = 4.0*atan(1.0d0)
+
+    real (real64) :: u01, u02
+    real (real64) :: factor
+
+    call mathsRandomUniform64(s, u01)
+    call mathsRandomUniform64(s, u02)
+
+    factor = sqrt(-2.0*log(u01))
+    rv(1)  = factor*cos(2.0*pi*u02)
+    rv(2)  = factor*sin(2.0*pi*u02)
+
+#endif
 
   end subroutine mathsRandomGaussian2_64
 
