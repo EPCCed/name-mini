@@ -10,6 +10,7 @@ program main
   type (options_t) :: rt_options
 
   logical :: saturation = .true.
+  logical :: validation = .true.
   integer :: ierr
   integer :: nlog
 
@@ -62,6 +63,7 @@ program main
     stop "END TOP HAT TEST"
   end if
 
+  if (validation) then
   block
     ! Validation: Usual range is maxnlog 4, 7, but 4, 6 will is quicker
     ! Satauration: 2^25 is c. 32 million particles
@@ -88,6 +90,7 @@ program main
       if (saturation) call main_saturation_benchmark(rt_options, maxsat)
     end if
   end block
+  end if
 
   print *, ""
   print *, "Benchmarks completed normally"
