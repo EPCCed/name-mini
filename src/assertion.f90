@@ -25,7 +25,7 @@ contains
 
     ! Fail if expr is not .true.
 
-    !$omp declare target device_type(any)
+    !$omp declare target
 
     logical,             intent(in) :: expr
     character (len = *), intent(in) :: file
@@ -35,7 +35,7 @@ contains
     ! From an idea of Harold Anlauf.
     interface
       pure subroutine assertion_stop(expr, file, line)
-        !$omp declare target device_type(any)
+        !$omp declare target
         logical,             intent(in) :: expr
         character (len = *), intent(in) :: file
         integer,             intent(in) :: line

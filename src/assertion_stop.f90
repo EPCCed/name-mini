@@ -8,7 +8,7 @@ subroutine assertion_stop(expr, file, line)
   use, intrinsic :: iso_fortran_env
   implicit none
 
-  !$omp declare target device_type(any)
+  !$omp declare target
 
   ! Stop if expr is not .true.
 
@@ -23,7 +23,15 @@ subroutine assertion_stop(expr, file, line)
   ! no intrinsic trim() available;
   ! no string catenations via '//' are available;
   ! A bare list-directed write is all that is available ...
+
+#ifdef __INTEL_LLVM_COMPILER
+  ! Intel does not like strings
+  ! error #5623: **Internal compiler error: internal abort**
+  ! So, ...
+  print *, "Assertion failed. [Line] ", line
+#else
   write (error_unit, *) "Assertion failed. [File, Line]: ", file, line
+#endif
 
   stop
 

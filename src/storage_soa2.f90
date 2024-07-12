@@ -227,7 +227,7 @@ contains
     integer (int64), intent(in)    :: iUP
     type (source_t), intent(in)    :: source
 
-    !$omp declare target device_type(any)
+    !$omp declare target
 
     assert(0 < iP .and. iP <= pa%nParticles)
 
@@ -282,7 +282,7 @@ contains
     integer (int32), intent(in)    :: idst
     integer (int32), intent(in)    :: isrc
 
-    !$omp declare target device_type(any)
+    !$omp declare target
 
     assert(0 < idst .and. idst <= pa%nParticles)
     assert(0 < isrc .and. isrc <= pa%nParticles)

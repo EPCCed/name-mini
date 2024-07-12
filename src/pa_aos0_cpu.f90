@@ -284,7 +284,8 @@ contains
     !$omp do schedule (static, NAME_PA_BLOCKSZ)
     do iP = 1, self%lastParticle()
       iplast = pa_aos0_cpu_last_to_index(self, tid)
-      if (iP >= iplast) exit
+      ! This might be "exit" rather than "cycle" if it was legal...
+      if (iP >= iplast) cycle
       if (self%particles(iP)%active) cycle
       ! Move. PENDING Repeat for masses if have masses
       self%particles(iP) = self%particles(iplast)
