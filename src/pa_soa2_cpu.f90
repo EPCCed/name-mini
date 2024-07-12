@@ -193,7 +193,7 @@ contains
     !$omp do schedule (static, NAME_PA_BLOCKSZ)
     do iP = 1, self%lastParticle()
       iplast = pa_soa2_cpu_last_to_index(self, tid)
-      if (iP >= iplast) exit
+      if (iP >= iplast) cycle
       if (self%particles%active(iP)) cycle
       ! Copy iplast to iP
       call storage_soa2_copy(self%particles, iP, iplast)

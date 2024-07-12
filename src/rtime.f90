@@ -160,6 +160,8 @@ contains
     type (sTime_t),    intent(in) :: st
     logical                       :: infinitePast
 
+    !$omp declare target
+
     infinitePast = (st%fractions == STIME_INF_PAST)
     if (calendar%isBackwards) then
       infinitePast = (st%fractions == STIME_INF_FUTURE)
@@ -174,6 +176,8 @@ contains
     type (calendar_t), intent(in) :: calendar
     type (sTime_t),    intent(in) :: st
     logical                       :: infiniteFuture
+
+    !$omp declare target
 
     infiniteFuture = (st%fractions == STIME_INF_FUTURE)
     if (calendar%isBackwards) then
@@ -190,6 +194,8 @@ contains
 
     type (sTime_t), intent(in) :: st
     logical                    :: infinite
+
+    !$omp declare target
 
     infinite = (st%fractions == STIME_INF_PAST)   .or. &
                (st%fractions == STIME_INF_FUTURE)
@@ -324,7 +330,7 @@ contains
     type (sTimeInterval_t), intent(in)    :: dt
     type (sTime_t)                        :: tsum
 
-    !$omp declare target device_type(any)
+    !$omp declare target
 
     ! Not +inf + -inf or -inf + +inf ("cancelling infinities")
     ! PENDING "programmer error" or "run time error"?
@@ -422,6 +428,8 @@ contains
     type (sTimeInterval_t), intent(in) :: sti
     logical                            :: minusInf
 
+    !$omp declare target
+
     minusInf = (sti%fractions == STIME_INF_PAST)
     if (calendar%isBackwards) then
       minusInf = (sti%fractions == STIME_INF_FUTURE)
@@ -436,6 +444,8 @@ contains
     type (calendar_t),      intent(in) :: calendar
     type (sTimeInterval_t), intent(in) :: sti
     logical                            :: plusInf
+
+    !$omp declare target
 
     plusInf = (sti%fractions == STIME_INF_FUTURE)
     if (calendar%isBackwards) then
@@ -452,6 +462,8 @@ contains
 
     type (sTimeInterval_t), intent(in) :: sti
     logical                            :: infinite
+
+    !$omp declare target
 
     infinite = (sti%fractions == STIME_INF_PAST)   .or. &
                (sti%fractions == STIME_INF_FUTURE)

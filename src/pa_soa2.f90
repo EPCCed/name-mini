@@ -158,7 +158,7 @@ contains
 
     if (.false.) then
       ! Don't do this. Performance disaster awaits ...
-      call mathsRandomGaussian(particles%s(iP, :), rv)
+      call mathsRandomGaussian3(particles%s(iP, :), rv)
     else
       block
         ! We must form a contiguous argument ...
