@@ -8,10 +8,62 @@ module validate
   implicit none
   private
 
+  public :: validate_nvalid_instantaneous
+  public :: validate_nvalid_tophat
   public :: validate_filename
   public :: validate_write
 
+  ! Expected numbers of active particles
+  ! Depends on at least: source type, random number generator method,
+  !                      real (std) precision
+  ! Store the expected number for 10^n particles as array(n) (but
+  ! usually just 10^4, 10^5, 10^6, so array(4:6)
+
+  integer, parameter, public :: nvalid_r64_reject_instant(7) = &
+       [-999, -999, -999, 7959, 79504, 795821, 7957394]
+  integer, parameter, public :: nvalid_r64_trigon_instant(7) = &
+       [-999, -999, -999, 7910, 79521, 796136, -999]
+
+  integer, parameter, public :: nvalid_r64_reject_tophat(7) = &
+       [-999, -999, -999, 5829, 57024, 569385, -999]
+  integer, parameter, public :: nvalid_r64_trigon_tophat(7) = &
+       [-999, -999, -999, 5738, 56809, 570593, -999]
+
 contains
+
+  !----------------------------------------------------------------------------
+
+  function validate_nvalid_instantaneous() result(nvalid)
+
+    integer                      :: nvalid(7)
+
+    nvalid(:) = -999
+
+#ifdef BOX_MUELLER_REJECTION_METHOD
+    if (std == real64) nvalid(:) = nvalid_r64_reject_instant(:)
+#else
+    if (std == real64) nvalid(:) = nvalid_r64_trigon_instant(:)
+#endif
+
+  end function validate_nvalid_instantaneous
+
+  !----------------------------------------------------------------------------
+
+  function validate_nvalid_tophat() result(nvalid)
+
+    integer                      :: nvalid(7)
+
+    nvalid(:) = -999
+
+#ifdef BOX_MUELLER_REJECTION_METHOD
+    if (std == real64) nvalid(:) = nvalid_r64_reject_tophat(:)
+#else
+    if (std == real64) nvalid(:) = nvalid_r64_trigon_tophat(:)
+#endif
+
+  end function validate_nvalid_tophat
+
+  !----------------------------------------------------------------------------
 
   function validate_filename(stub, nParticles) result(filename)
 

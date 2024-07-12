@@ -120,8 +120,12 @@ contains
 
     block
       integer :: ntotal
+      integer :: nvalid(7)
+      integer :: nexpect
 
-      ntotal = ppa%nActive()
+      ntotal    = ppa%nActive()
+      nvalid(:) = validate_nvalid_instantaneous()
+      nexpect   = -999
 
       write (*, '(a)') ""
       write (*, '(a,i8)') "Particles still active: ", ntotal
@@ -129,65 +133,31 @@ contains
 
       select case (nParticles)
       case (10000)
-         if (ntotal /= 7959) then
-            write (*, '(a)') 'Validation FAIL: expected 7959 active'
-            ivalid = 0
-         else
-            write (*, '(a)') 'Validation PASS: expected 7959 active'
-            ivalid = nParticles
-         end if
+         nexpect = nvalid(4)
       case (100000)
-         if (ntotal /= 79504) then
-            write (*, '(a)') 'Validation FAIL: expected 79504 active'
-            ivalid = 0
-         else
-            write (*, '(a)') 'Validation PASS: expected 79504 active'
-            ivalid = nParticles
-         end if
+         nexpect = nvalid(5)
       case (1000000)
-         if (ntotal /= 795821) then
-            write (*, '(a)') 'Validation FAIL: expected 795821 active'
-            ivalid = 0
-         else
-            write (*, '(a)') 'Validation PASS: expected 795821 active'
-            ivalid = nParticles
-         end if
+         nexpect = nvalid(6)
       case (10000000)
-         if (ntotal /= 7957394) then
-            write (*, '(a)') 'Validation FAIL: expected 7957394 active'
-            ivalid = 0
-         else
-            write (*, '(a)') 'Validation PASS: expected 7957394 actives'
-            ivalid = nParticles
-         end if
+         nexpect = nvalid(7)
       end select
 
-      ! File output
+      ivalid = 0
+      if (nexpect == -999) then
+         print *, "No validation available"
+      else
+        if (ntotal /= nexpect) then
+          write (*, '(a,i10)') 'Validation FAIL: expected ', nexpect
+        else
+          write (*, '(a,i10)') 'Validation PASS: expected ', nexpect
+          ivalid = nParticles
+        end if
+      end if
+
+      ! File output (PENDING interface ro obtain positions)
       if (options%fileOutput) then
-#ifdef OLD
-        block
-        integer :: npart = 10
-        real (std), allocatable :: x(:,:)
-        character (len = :), allocatable :: filename
-        integer :: my_unit
-        integer :: ierr
-
-        allocate(x(npart, 3))
-        do iP = 1, npart
-           x(iP, 1:3) = pa%particles(iP)%x(1:3)
-        end do
-
-        filename = validate_filename("instantaneous.dat", nparticles)
-        open (newunit = my_unit, file = filename, status = "replace", &
-             action = "write", form = "formatted")
-        call validate_write(npart, x, my_unit, ierr)
-        assert(ierr == 0)
-        close (unit = my_unit, status = "keep")
-      end block
-#else
-      stop "NO WRITE IMPLEMENTED"
-#endif
-   end if
+         stop "NO WRITE IMPLEMENTED"
+      end if
 
     end block
 
@@ -306,8 +276,12 @@ contains
 
     block
       integer :: ntotal
+      integer :: nvalid(7)
+      integer :: nexpect
 
-      ntotal = ppa%nActive()
+      ntotal    = ppa%nActive()
+      nvalid(:) = validate_nvalid_tophat()
+      nexpect   = -999
 
       write (*, '(a)') ""
       write (*, '(a,i8)') "Particles still active: ", ntotal
@@ -315,30 +289,25 @@ contains
 
       select case (nParticles)
       case (10000)
-         if (ntotal /= 5829) then
-            write (*, '(a)') 'Validation FAIL: expected 5829 active'
-            ivalid = 0
-         else
-            write (*, '(a)') 'Validation PASS: expected 5829 active'
-            ivalid = nParticles
-         end if
+         nexpect = nvalid(4)
       case (100000)
-         if (ntotal /= 57024) then
-            write (*, '(a)') 'Validation FAIL: expected 57024 active'
-            ivalid = 0
-         else
-            write (*, '(a)') 'Validation PASS: expected 57024 active'
-            ivalid = nParticles
-         end if
+         nexpect = nvalid(5)
       case (1000000)
-         if (ntotal /= 569385) then
-            write (*, '(a)') 'Validation FAIL: expected 569385 active'
-            ivalid = 0
-         else
-            write (*, '(a)') 'Validation PASS: expected 569385 active'
-            ivalid = nParticles
-         end if
+         nexpect = nvalid(6)
       end select
+
+      ivalid = 0
+      if (nexpect == -999) then
+         print *, "No validation available"
+      else
+        if (ntotal /= nexpect) then
+          write (*, '(a,i10)') 'Validation FAIL: expected ', nexpect
+        else
+          write (*, '(a,i10)') 'Validation PASS: expected ', nexpect
+          ivalid = nParticles
+        end if
+      end if
+
     end block
 
     ! Final details.

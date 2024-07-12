@@ -151,7 +151,7 @@ contains
 
     ! Box-Mueller
 
-#ifdef BM_REJECTION_METHOD
+#ifdef BOX_MUELLER_REJECTION_METHOD
 
     real (real64) :: r1, r2
     real (real64) :: rsq
@@ -170,7 +170,9 @@ contains
     factor = sqrt(-2.0 * log(rsq) / rsq)
     rv(1) = r1 * factor
     rv(2) = r2 * factor
+
 #else
+
     ! Trigonometric functions
 
     real (real64), parameter :: pi = 4.0*atan(1.0d0)
@@ -201,24 +203,11 @@ contains
     integer (int32),  intent(inout) :: s(4)
     real (real32),    intent(out)   :: rv
 
-    real (real64) :: r1, r2
-    real (real64) :: rsq
-    real (real64) :: factor
+    real (real32) :: r(2)
 
-    ! Box-Mueller
+    call mathsRandomGaussian2_32(s, r)
 
-    do
-      call mathsRandomUniform64(s, r1)
-      call mathsRandomUniform64(s, r2)
-
-      r1 = 2.0 * r1 - 1.0
-      r2 = 2.0 * r2 - 1.0
-      rsq = r1 * r1 + r2 * r2
-      if (rsq < 1.0 .and. rsq /= 0.0) exit
-    end do
-
-    factor  = sqrt(-2.0 * log(rsq) / rsq)
-    rv = real(r1 * factor, real32)
+    rv = r(1) ! discard r(2)
 
   end subroutine mathsRandomGaussian1_32
 
@@ -234,21 +223,11 @@ contains
     integer (int32),  intent(inout) :: s(4)
     real (real64),    intent(out)   :: rv
 
-    real (real64) :: r1, r2
-    real (real64) :: rsq
+    real (real64) :: r(2)
 
-    ! Box-Mueller
-    do
-      call mathsRandomUniform64(s, r1)
-      call mathsRandomUniform64(s, r2)
+    call mathsRandomGaussian2_64(s, r)
 
-      r1 = 2.0*r1 - 1.0
-      r2 = 2.0*r2 - 1.0
-      rsq = r1*r1 + r2*r2
-      if (rsq < 1.0 .and. rsq /= 0.0) exit
-    end do
-
-    rv = r1*sqrt(-2.0*log(rsq)/rsq)
+    rv = r(1) ! discard r(2)
 
   end subroutine mathsRandomGaussian1_64
 
@@ -264,10 +243,54 @@ contains
     integer (int32), intent(inout) :: s(4)
     real (real32),   intent(out)   :: rv(2)
 
-    real (real64) :: r64(2)
 
-    call mathsRandomGaussian2_64(s, r64)
-    rv(:) = real(r64(:), real32)
+    ! Box-Mueller
+
+#ifdef BOX_MUELLER_REJECTION_METHOD
+
+    real (real64) :: u01, u02
+    real (real32) :: r1, r2
+    real (real32) :: rsq
+    real (real32) :: factor
+
+    do
+      call mathsRandomUniform64(s, u01)
+      call mathsRandomUniform64(s, u02)
+
+      r1 = real(u01, real32)
+      r2 = real(u02, real32)
+
+      r1 = 2.0 * r1 - 1.0
+      r2 = 2.0 * r2 - 1.0
+      rsq = r1 * r1 + r2 * r2
+      if (rsq < 1.0 .and. rsq /= 0.0) exit
+    end do
+
+    factor  = sqrt(-2.0 * log(rsq) / rsq)
+    rv = real(r1 * factor, real32)
+
+#else
+
+    ! Trigonometric functions
+    ! Perhaps wants an explicit mathsRandomUniform32()
+
+    real (real32), parameter :: pi = 4.0*atan(1.0e0)
+
+    real (real64) :: u01, u02
+    real (real32) :: r01, r02
+    real (real32) :: rfactor
+
+    call mathsRandomUniform64(s, u01)
+    call mathsRandomUniform64(s, u02)
+
+    r01 = real(u01, real32)
+    r02 = real(u02, real32)
+
+    rfactor = sqrt(-2.0*log(r01))
+    rv(1)  = rfactor*cos(2.0*pi*r02)
+    rv(2)  = rfactor*sin(2.0*pi*r02)
+
+#endif
 
   end subroutine mathsRandomGaussian2_32
 
