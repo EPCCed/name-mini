@@ -20,3 +20,14 @@ The will produce an executable `mini-omp`.
 The executable performs a self-validation which will report `PASS`
 or `FAIL` at run time.
 
+## Portability
+
+The following limited set of platforms/compilers have been investigated ("ok" indicates successful compilation and execution):
+
+| Compiler/Platform | CPU | GPU              | Notes                  |
+|-------------------|-----|------------------|------------------------|
+| Cray/AMD          | ok  | does not compile | Cray CCE 16.0          |
+| `ifx`/Intel       | ok  | N/A              | `ifx` 2024.1           |
+| nvfortran/NVIDIA  | ok  | ok               | SDK 2024.5 (Intel CPU) |
+
+
